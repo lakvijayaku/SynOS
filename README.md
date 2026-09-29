@@ -6,8 +6,9 @@ SynOS is a security-first operating system kernel designed to protect private fi
 SynOS is in a very early stage of development. The initial target architecture is **x86_64**. There is no kernel yet; work so far covers the first stage of booting:
 
 - A 512-byte boot sector that sets up a known real-mode execution environment (segment registers, stack, and the boot drive number passed by the BIOS) and prints a status message.
-- Reading a second sector from the boot disk into memory with BIOS disk services (`int 0x13`), and printing the string stored there, or an error if the read fails.
-- A build script (`scripts/build.sh`) that assembles both sectors with NASM and joins them into a bootable raw disk image, `boot/synos.img`.
+- Loading a two-sector loader from the boot disk into memory with BIOS disk services (`int 0x13`) and handing control to it, passing the boot drive number; an error is printed if the read fails.
+- A loader that prints a message stored in its second sector, confirming that both sectors were loaded.
+- A build script (`scripts/build.sh`) that assembles the boot sector and loader with NASM and joins them into a bootable raw disk image, `boot/synos.img`.
 
 ### Getting Started
 Building SynOS requires four tools:
@@ -106,7 +107,7 @@ bash scripts/build.sh
 qemu-system-x86_64 -drive format=raw,file=boot/synos.img -no-reboot
 ```
 
-A QEMU window opens showing the boot sector's status message, followed by the message read from the second disk sector. To quit, close the QEMU window, or press `Ctrl+C` in the terminal that started it.
+A QEMU window opens showing the boot sector's status message, followed by the loader's message. To quit, close the QEMU window, or press `Ctrl+C` in the terminal that started it.
 
 ### Architecture
 SynOS uses a **microkernel architecture**: drivers, filesystems, and network stacks run as isolated, unprivileged user-space servers, each in its own address space. Compromising one component does not give an attacker control of the rest of the machine.

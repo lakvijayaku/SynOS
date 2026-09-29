@@ -21,21 +21,22 @@ current_step="compiling boot sector"
 echo "🔨 Compiling boot sector..."
 nasm -f bin -Werror boot/boot_sector.asm -o boot/boot_sector.bin
 
-current_step="compiling data sector"
-echo "🔨 Compiling data sector..."
-nasm -f bin -Werror boot/data_sector.asm -o boot/data_sector.bin
+current_step="compiling loader"
+echo "🔨 Compiling loader..."
+nasm -f bin -Werror boot/loader.asm -o boot/loader.bin
 
 current_step="checking sector sizes"
-for f in boot/boot_sector.bin boot/data_sector.bin; do
+for f in boot/boot_sector.bin boot/loader.bin; do
     size=$(wc -c < "$f" | tr -d ' ')
-    if [ "$size" -ne 512 ]; then
-        echo "${RED}$f is $size bytes; every sector must be exactly 512${RESET}"
+    # Check if the size modulo 512 is NOT equal to 0
+    if [ $((size % 512)) -ne 0 ]; then
+        echo "${RED}$f is $size bytes; every file must be a multiple of 512 bytes${RESET}"
         false
     fi
 done
 
 current_step="combining sectors into disk image"
 echo "📦 Combining sectors into raw disk image..."
-cat boot/boot_sector.bin boot/data_sector.bin > boot/synos.img
+cat boot/boot_sector.bin boot/loader.bin > boot/synos.img
 
 echo "${GREEN}✅ Success! Output created at boot/synos.img${RESET}"

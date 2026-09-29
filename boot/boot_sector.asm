@@ -12,16 +12,18 @@
 ;      makes no promises about what they contain.
 ;   2. Saves the boot drive number the BIOS passes in DL.
 ;   3. Clears the screen and prints a status message.
-;   4. Reads sector 2 of the boot disk into memory at 0x7e00, right after
-;      this boot sector.
-;   5. Prints the string stored in sector 2, or 'E' if the read failed.
-;   6. Halts the CPU.
+;   4. Reads the loader (sectors 2-3 of the boot disk) into memory at 0x7e00,
+;      right after this boot sector.
+;   5. Jumps to the loader, passing the boot drive in DL, or prints 'E' and
+;      halts if the read failed.
+;   6. Halt loop: used only on the error path; on success the loader never
+;      returns here.
 ;
 ; Real-mode memory map (the parts that matter here):
 ;   0x00000 - 0x004ff   Interrupt Vector Table and BIOS data - never overwrite
 ;   0x00500 - 0x07bff   Free; the stack grows down through here from 0x7c00
 ;   0x07c00 - 0x07dff   This boot sector (512 bytes)
-;   0x07e00 - 0x07fff   Sector 2, loaded by this code
+;   0x07e00 - 0x081ff   The loader (2 sectors), loaded by this code
 ;
 ; Real-mode addressing: physical address = segment * 16 + offset.
 ; Every memory access ([...]) uses a segment register, usually DS.
@@ -60,14 +62,13 @@ main:
     call print_string           ; Push the return address onto the stack and jump to print_string; its ret brings us back to the next line
 
 ; -----------------------------------------------------------------------------
-; Step 4: read sector 2 into memory with BIOS disk service int 0x13, AH = 0x02
+; Step 4: read the loader into memory with BIOS disk service int 0x13, AH = 0x02
 ; -----------------------------------------------------------------------------
     mov ah, 0x02                ; BIOS disk function 0x02: Read Sectors
-    mov al, 1                   ; Number of sectors to read
+    mov al, 2                   ; Number of sectors to read: the loader's size (1024 bytes = 2 sectors); must match the padding in loader.asm
     mov ch, 0                   ; Cylinder 0
-    mov cl, 2                   ; Sector 2 (CHS sector numbers start at 1; sector 1 is this boot sector)
+    mov cl, 2                   ; Start at sector 2 (CHS sector numbers start at 1; sector 1 is this boot sector)
     mov dh, 0                   ; Head 0
-    mov dl, [boot_drive]        ; The drive to read from: the boot drive saved earlier (brackets: we want the VALUE stored there)
     mov bx, 0x7e00              ; ES:BX = 0x0000:0x7e00 is where the sector goes, directly after this boot sector; BX must not change until int 0x13 returns
     int 0x13                    ; Call BIOS disk services; on failure it sets the carry flag (CF)
     mov bh, 0                   ; BX is no longer needed as the buffer address, so set BH back to display page 0 for printing; mov does not change flags, so CF survives for jc
@@ -76,10 +77,8 @@ main:
 ; Step 5: report the result
 ; -----------------------------------------------------------------------------
     jc disk_error               ; Jump if Carry: CF = 1 means the read failed
-    mov si, 0x7e00              ; SI = the address where int 0x13 put sector 2, which starts with a zero-terminated string
-    call print_string           ; Print the string loaded from disk; seeing it proves the read worked
-    jmp halt_system             ; Nothing left to do
-
+    mov dl, [boot_drive]        ; Pass the boot drive to the loader in DL; int 0x13 does not promise to preserve DL, so reload it from memory
+    jmp 0x7e00                  ; Hand control to the loader; a near jmp changes only IP, so CS stays 0
 ; -----------------------------------------------------------------------------
 ; Step 6: stop the CPU
 ; -----------------------------------------------------------------------------
