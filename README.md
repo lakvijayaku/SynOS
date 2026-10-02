@@ -13,10 +13,10 @@ SynOS is in a very early stage of development. The initial target architecture i
 ### Getting Started
 Building SynOS requires four tools:
 
-- [Git](https://git-scm.com/): downloads the source code
-- [NASM](https://www.nasm.us/): assembles the boot sector source
-- [QEMU](https://www.qemu.org/): emulates an x86 machine and boots the disk image
-- Bash: runs the build script
+- [Git](https://git-scm.com/) - downloads the source code
+- [NASM](https://www.nasm.us/) - assembles the boot sector source
+- [QEMU](https://www.qemu.org/) - emulates an x86 machine and boots the disk image
+- Bash - runs the build script
 
 #### macOS
 Install [Homebrew](https://brew.sh/) (the macOS package manager) if it is not already installed:
